@@ -1,31 +1,140 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="us">
+
 <head lang="en">
     <meta charset="UTF-8">
-    <title>Maven to Gradle Dependencies Converter</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <title>Maven to Gradle KotlinDSL Dependencies Converter</title>
+    <meta name="description" content="Convert your maven dependencies to Gradle">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/darkmode-js@1.5.7/lib/darkmode-js.min.js"></script>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
     <script src="converter.js"></script>
+    <script>
+        function addDarkmodeWidget() {
+            new Darkmode().showWidget();
+        }
+
+        window.addEventListener('load', addDarkmodeWidget);
+    </script>
 </head>
 <body>
-<a href="https://github.com/sagioto/maven2gradle"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a>
+<a href="https://github.com/alex-cova/maven2gradle"><img style="position: absolute; top: 0; right: 0; border: 0;"
+                                                         src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67"
+                                                         alt="Fork me on GitHub"
+                                                         data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a>
 <div class="container">
-    <div class="jumbotron">
-        <h1><strong>maven 2 gradle</strong></h1>
-        <h3>Paste your maven dependencies here <small>(with or without the dependencies root element):</small></h3>
-        <div class="col-md-6">
-            <textarea id="input" class="form-control" rows="20" autofocus tabindex="1" style="resize: none;"></textarea>
+    <div>
+
+        <div class="jumbotron">
+            <h1><strong>maven 2 gradle (Kotlin DSL)</strong></h1>
+            <h3>Paste your maven dependencies here <small>(with or without the dependencies root element):</small></h3>
+
+            <!-- toggle to enable kotlin dsl -->
+            <div class="checkbox" style="margin-left: 20px">
+                <label>
+                    <input type="checkbox" class="form-check-input" id="kotlin" onclick="convert()" checked> Kotlin DSL
+                </label>
+
+                <label style="margin-left: 20px">
+                    Default Configuration:
+                    <select id="choicebox" class="form-control" onchange="convert()" class="form-control"
+                            style="width: 200px; display: inline-block">
+                        <option value="implementation">implementation</option>
+                        <option value="runtimeOnly">runtimeOnly</option>
+                        <option value="compileOnly">compileOnly</option>
+                        <option value="testImplementation">testImplementation</option>
+                        <option value="testCompileOnly">testCompileOnly</option>
+                        <option value="api">api</option>
+                        <option value="testApi">testApi</option>
+                        <option value="testRuntimeOnly">testRuntimeOnly</option>
+                        <option value="annotationProcessor">annotationProcessor</option>
+                        <option value="testAnnotationProcessor">testAnnotationProcessor</option>
+                        <option value="developmentOnly">developmentOnly</option>
+
+                    </select>
+                </label>
+
+                <label>
+                    <input type="checkbox" id="gradleDSL" style="margin-left: 20px" onclick="convert()"> Include repositories
+                </label>
+            </div>
         </div>
-        <div class="col-md-6">
-            <textarea id="output" readOnly tabindex="-1" class="col-md-6 form-control" rows="20" style="resize: none;"></textarea>
+
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="left-content">
+                        <textarea id="input" class="form-control" rows="20" autofocus tabindex="1"
+                                  style="resize: none;"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="right-content">
+                        <textarea id="output" readOnly tabindex="-1" class="form-control" rows="20"
+                                  style="resize: none;"></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
-        <p style="color: transparent">.</p>
-        <button class="btn btn-primary center-block" tabindex="2" style="margin-top: 20px" onclick="convert()">Convert ⇨</button>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-primary center-block" tabindex="2" style="margin-top: 20px"
+                                onclick="convert()">
+                            Convert ⇨
+                        </button>
+                        <div style="width: 20px;"></div> <!-- Spacer with a width of 20px -->
+                        <button id="copyButton" class="btn btn-secondary center-block" tabindex="2"
+                                style="margin-top: 20px">Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <p style="color: transparent">.</p>
         <div id="success" class="alert alert-success" role="alert" hidden><strong>Go get 'em!</strong></div>
-        <div id="empty" class="alert alert-warning" role="alert" hidden><strong>You should paste something in!</strong></div>
-        <div id="failed" class="alert alert-danger" role="alert" hidden><strong>Oh snap! something went wrong</strong></div>
+        <div id="empty" class="alert alert-warning" role="alert" hidden><strong>You should paste something
+            in!</strong></div>
+        <div id="failed" class="alert alert-danger" role="alert" hidden><strong>Oh snap! something went
+            wrong</strong></div>
     </div>
 </div>
+
 </body>
+<footer>
+    <script>
+        // Get the button element
+        var copyButton = document.getElementById("copyButton");
+
+        // Add click event listener to the button
+        copyButton.addEventListener("click", function () {
+            // Get the textarea element
+            var outputTextarea = document.getElementById("output");
+
+            // Select the text in the textarea
+            outputTextarea.select();
+
+            // Copy the selected text to the clipboard
+            document.execCommand("copy");
+
+            navigator.clipboard.writeText(outputTextarea.textContent)
+                .then(() => {
+                    console.log('Text copied!');
+                })
+                .catch((err) => {
+                    console.error('Failed to copy text:', err);
+                });
+
+            // Optionally, provide user feedback
+            alert("Happy coding!");
+        });
+    </script>
+
+
+</footer>
 </html>
