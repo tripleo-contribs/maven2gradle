@@ -137,14 +137,6 @@
             // Copy the selected text to the clipboard
             document.execCommand("copy");
 
-            navigator.clipboard.writeText(outputTextarea.textContent)
-                .then(() => {
-                    console.log('Text copied!');
-                })
-                .catch((err) => {
-                    console.error('Failed to copy text:', err);
-                });
-
             // Optionally, provide user feedback
             alert("Happy coding!");
         });
