@@ -5,17 +5,98 @@ function parseAndGenerate() {
     var text = document.getElementById('input').value;
 
     var parser = new DOMParser();
-    var parsedDeps = parser.parseFromString(text, 'text/xml');
+    var pomXml = parser.parseFromString(text, 'text/xml');
+    var parsedDeps = pomXml;
     var shouldAddOuterClosure = parsedDeps.getElementsByTagName('dependencies').length;
-    if (!shouldAddOuterClosure) {
+
+    var propertyList = [];
+    var dependencies = getDependencies2(text, parser, pomXml, propertyList);
+    var properties = getProperties2(text, parser, pomXml, propertyList);
+
+    return properties + dependencies;
+}
+
+function getProperties2(text, parser, pomXml, propertyList){
+    var shouldAddOuterClosure =  pomXml.getElementsByTagName('properties').length;
+    if(!shouldAddOuterClosure){
         text = '<root>' + text + '</root>';
-        parsedDeps = parser.parseFromString(text, 'text/xml');
+        pomXml = parser.parseFromString(text, 'text/xml');
     }
-    var depElems = parsedDeps.getElementsByTagName('dependency');
+
+    var propertyElements = pomXml.getElementsByTagName("properties");
+    var output = "";
+    if(propertyElements != null && propertyElements.length > 0) {
+        var propertyNodeList = propertyElements[0].childNodes;
+
+        for(var i = 0; i < propertyNodeList.length; i++) {
+            var propertyNode = propertyNodeList[i];
+            if(propertyNode.namespaceURI == "http://maven.apache.org/POM/4.0.0") {
+                var propertyName = camelCase(propertyNode.tagName);
+                var propertyValue = propertyNode.textContent;
+                if(propertyList.indexOf(propertyName) != -1) {
+                    output += "def " + propertyName + " = \"" + propertyValue + "\"\n"
+                }
+            }
+        }
+    }
+
+    return output;
+}
+
+function camelCase(input) {
+    return input.toLowerCase().replace(/[.-](.)/g, function(match, group1) {
+        return group1.toUpperCase();
+    });
+}
+
+function getProperties(pomXml, propertyList){
+    var shouldAddOuterClosure =  pomXml.getElementsByTagName('properties').length;
+    if(!shouldAddOuterClosure){
+        text = '<root>' + text + '</root>';
+        pomXml = parser.parseFromString(text, 'text/xml');
+    }
+
+    var propertyElements = pomXml.getElementsByTagName("properties");
+    var output = "";
+    if(propertyElements != null) {
+        var propertyNodeList = propertyElements[0]. childNodes;
+
+        for(var i = 0; i < propertyNodeList.length; i++) {
+            var propertyNode = propertyNodeList[i];
+            if(propertyNode.namespaceURI == "http://maven.apache.org/POM/4.0.0") {
+                var propertyName = camelCase(propertyNode.tagName);
+                var propertyValue = propertyNode.textContent;
+                if(propertyList.indexOf(propertyName) != -1) {
+                    output += "def " + propertyName + " = \"" + propertyValue + "\"\n"
+                }
+            }
+        }
+    }
+
+    return output;
+}
+
+function camelCase(input) {
+    return input.toLowerCase().replace(/[.-](.)/g, function(match, group1) {
+        return group1.toUpperCase();
+    });
+}
+
+function getDependencies(pomXml, propertyList){
+    var shouldAddOuterClosure =  pomXml.getElementsByTagName('dependencies').length;
+    if(!shouldAddOuterClosure){
+        text = '<root>' + text + '</root>';
+        pomXml = parser.parseFromString(text, 'text/xml');
+    }
+    var depElems = pomXml.getElementsByTagName('dependency');
     var grDeps = [];
-    for (var i = 0; i < depElems.length; i++) {
+    for(var i = 0; i < depElems.length; i++) {
         var depElem = depElems[i];
         var scopeElems = depElem.getElementsByTagName('scope');
+        //var scope = 'implementation';
+        //if (scopeElems.length && scopeElems[0].innerHTML == 'test') {
+        //    scope = 'testImplementation';
+        //}
 
 
         var scope = document.getElementById('choicebox').value;
@@ -23,6 +104,7 @@ function parseAndGenerate() {
         if (scopeElems.length && scopeElems[0].innerHTML == 'test') {
             scope = 'testCompile';
         }
+
         var group = depElem.getElementsByTagName('groupId')[0].innerHTML;
         var artifact = depElem.getElementsByTagName('artifactId')[0].innerHTML;
         var versionElems = depElem.getElementsByTagName('version');
@@ -30,18 +112,25 @@ function parseAndGenerate() {
         if (versionElems.length) {
             version = versionElems[0].innerHTML;
         }
-
-        var kotlin = document.getElementById('kotlin').checked;
-
-        if (kotlin) {
-            grDeps.push(scope + ' (' + '"' + group + ":" + artifact + ":" + version + '")');
-        } else {
-            grDeps.push(scope + ' ' + '\'' + group + ":" + artifact + ":" + version + '\'');
+        if(version.startsWith("$")) {
+            version = camelCase(version);
+            if(propertyList.indexOf(version) == -1) {
+                propertyList.push(version.substring(2, version.length - 1))
+            }
         }
+                var kotlin = document.getElementById('kotlin').checked;
+
+                if (kotlin) {
+                    grDeps.push(scope + ' (' + '"' + group + ":" + artifact + ":" + version + '")');
+                } else {
+                    grDeps.push(scope + ' ' + '\'' + group + ":" + artifact + ":" + version + '\'');
+                }
+
+//        grDeps.push(scope + ' ' + '"' + group + ":" + artifact + ":" + version + '"');
     }
     var grDepsOutput = grDeps.join('\n');
-
     if (depElems.length > 1) {
+//    if(shouldAddOuterClosure){
         grDepsOutput = 'dependencies {\n\t' + grDepsOutput.replace(/\n/g, '\n\t') + '\n}'
     }
 
@@ -54,6 +143,43 @@ function parseAndGenerate() {
             "}\n\n" + grDepsOutput
     }
 
+    return grDepsOutput;
+}
+
+function getDependencies2(text, parser, pomXml, propertyList){
+    var shouldAddOuterClosure =  pomXml.getElementsByTagName('dependencies').length;
+    if(!shouldAddOuterClosure){
+        text = '<root>' + text + '</root>';
+        pomXml = parser.parseFromString(text, 'text/xml');
+    }
+    var depElems = pomXml.getElementsByTagName('dependency');
+    var grDeps = [];
+    for(var i = 0; i < depElems.length; i++) {
+        var depElem = depElems[i];
+        var scopeElems = depElem.getElementsByTagName('scope');
+        var scope = 'implementation';
+        if (scopeElems.length && scopeElems[0].innerHTML == 'test') {
+            scope = 'testImplementation';
+        }
+        var group = depElem.getElementsByTagName('groupId')[0].innerHTML;
+        var artifact = depElem.getElementsByTagName('artifactId')[0].innerHTML;
+        var versionElems = depElem.getElementsByTagName('version');
+        var version = '*';
+        if (versionElems.length) {
+            version = versionElems[0].innerHTML;
+        }
+        if(version.startsWith("$")) {
+            version = camelCase(version);
+            if(propertyList.indexOf(version) == -1) {
+                propertyList.push(version.substring(2, version.length - 1))
+            }
+        }
+        grDeps.push(scope + ' ' + '"' + group + ":" + artifact + ":" + version + '"');
+    }
+    var grDepsOutput = grDeps.join('\n');
+    if(shouldAddOuterClosure){
+        grDepsOutput = 'dependencies {\n\t' + grDepsOutput.replace(/\n/g, '\n\t') + '\n}'
+    }
     return grDepsOutput;
 }
 
@@ -76,6 +202,7 @@ function convert() {
     } catch (err) {
         output.value = '';
         fail.hidden = false;
+        console.log(err)
     }
 
 }
